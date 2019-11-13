@@ -1,12 +1,11 @@
 package com.karumi.todoapiclient
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import todoapiclient.TodoApiClient
 import todoapiclient.dto.TaskDto
+import todoapiclient.exception.UnknownApiError
 
 class TodoApiClientTest : MockWebServerTest() {
 
@@ -37,6 +36,63 @@ class TodoApiClientTest : MockWebServerTest() {
         assertGetRequestSentTo("/todos")
     }
 
+
+    @Test
+    fun sendsSuccessResponse() {
+        enqueueMockResponse(200, "getTasksResponse.json")
+
+        val response = apiClient.allTasks
+        assertTrue(response.right!!.isNotEmpty())
+        assertTrue(response.right!![0].id.isNotEmpty())
+        assertTrue(response.right!![0].title.isNotEmpty())
+        assertTrue(response.right!![0].userId.isNotEmpty())
+
+    }
+
+
+    @Test
+    fun throwsUnknownErrorIfThereIsNoHandledError() {
+        enqueueMockResponse(500)
+
+        val error = apiClient.allTasks.left
+
+        assertEquals(UnknownApiError(500), error)
+
+    }
+
+    @Test
+    fun sendsGetTaskByIdContainsCorrectPath() {
+
+        enqueueMockResponse(200)
+
+        apiClient.getTaskById("1")
+
+        assertGetRequestSentTo("/todos/1")
+
+    }
+
+    @Test
+    fun sendsGetTaskByIdReturnsCorrectData() {
+
+        enqueueMockResponse(200,"getTaskByIdResponse.json")
+
+
+        val task = apiClient.getTaskById("1").right
+
+        assertTaskContainsExpectedValues(task)
+
+    }
+
+
+    @Test
+    fun sendsGetAllTaskRequestToExpectedPath() {
+        enqueueMockResponse(200, "getTasksResponse.json")
+
+        apiClient.allTasks
+
+        assertRequestSentTo("/todos")
+    }
+
     @Test
     fun parsesTasksProperlyGettingAllTheTasks() {
         enqueueMockResponse(200, "getTasksResponse.json")
@@ -46,6 +102,7 @@ class TodoApiClientTest : MockWebServerTest() {
         assertEquals(200, tasks.size.toLong())
         assertTaskContainsExpectedValues(tasks[0])
     }
+
 
     private fun assertTaskContainsExpectedValues(task: TaskDto?) {
         assertTrue(task != null)
