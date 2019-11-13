@@ -5,6 +5,7 @@ import org.junit.Before
 import org.junit.Test
 import todoapiclient.TodoApiClient
 import todoapiclient.dto.TaskDto
+import todoapiclient.exception.ItemNotFoundError
 import todoapiclient.exception.UnknownApiError
 
 class TodoApiClientTest : MockWebServerTest() {
@@ -34,6 +35,61 @@ class TodoApiClientTest : MockWebServerTest() {
         apiClient.allTasks
 
         assertGetRequestSentTo("/todos")
+    }
+
+    @Test
+    fun sendsDeleteTaskRequestToTheCorrectEndpoint() {
+        enqueueMockResponse(200)
+
+        apiClient.deleteTaskById("1")
+
+        assertDeleteRequestSentTo("/todos/1")
+    }
+
+    @Test
+    fun sendsAddTaskRequestToTheCorrectEndpoint() {
+        enqueueMockResponse(200)
+
+        apiClient.addTask(getTaskDto())
+
+        assertPostRequestSentTo("/todos")
+    }
+
+
+    @Test
+    fun sendsAddTaskReturnsItemNotFOund() {
+        enqueueMockResponse(404)
+
+        val error = apiClient.allTasks.left
+
+        assertEquals(ItemNotFoundError, error)
+    }
+
+    @Test
+    fun sendsAddTaskReturnsServerError() {
+        enqueueMockResponse(500)
+
+        val error = apiClient.allTasks.left
+
+        assertEquals(UnknownApiError(500), error)
+    }
+
+    @Test
+    fun sendsAddTaskRequestToTheCorrectBody() {
+        enqueueMockResponse(200, "addTaskResponse.json")
+
+        apiClient.addTask(getTaskDto())
+
+        assertRequestBodyEquals("addTaskRequest.json")
+    }
+
+    @Test
+    fun sendsAddTaskRequestToTheCorrectResponse() {
+        enqueueMockResponse(200, "addTaskResponse.json")
+
+        val task = apiClient.addTask(getTaskDto()).right!!
+
+        assertTaskContainsExpectedValues(task)
     }
 
 
@@ -74,7 +130,7 @@ class TodoApiClientTest : MockWebServerTest() {
     @Test
     fun sendsGetTaskByIdReturnsCorrectData() {
 
-        enqueueMockResponse(200,"getTaskByIdResponse.json")
+        enqueueMockResponse(200, "getTaskByIdResponse.json")
 
 
         val task = apiClient.getTaskById("1").right
@@ -111,4 +167,7 @@ class TodoApiClientTest : MockWebServerTest() {
         assertEquals(task?.title, "delectus aut autem")
         assertFalse(task!!.isFinished)
     }
+
+
+    private fun getTaskDto() = TaskDto("1", "2", "Finish this kata", false)
 }
